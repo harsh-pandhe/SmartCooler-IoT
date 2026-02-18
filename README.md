@@ -14,7 +14,7 @@ The project is implemented in [water.ino](water.ino).
 - **Auto mode**: dynamically shifts target temperature based on room temperature/humidity.
 - **Relay protection**: compressor delay (`30s`) and hysteresis (`±0.5°C`) to reduce rapid switching.
 - **Persistent settings**: target temperature and mode are saved in ESP32 NVS (`Preferences`).
-- **Web dashboard**: live values for water temp, room temp, humidity, mode, relay state.
+- **Cloud Dashboard**: Syncs data to Firebase/Vercel for remote monitoring.
 - **LCD status view**: continuous local status feedback.
 
 ## Hardware
@@ -72,18 +72,17 @@ Built-in ESP32 core libraries used:
 
 ## Network & Web UI
 
-On boot, ESP32 starts a SoftAP using:
+### Connectivity
+The ESP32 connects to the configured Wi-Fi network and actively syncs telemetry to the cloud backend (hosted on **Vercel**).
 
-- SSID: `SmartCooler_WiFi`
-- Password: `password123`
+### Cloud Dashboard
+- **URL**: `https://smart-cooler-io-t.vercel.app/`
+- View live water temperature, room stats, and cooler status from anywhere.
+- **API Endpoint**: `POST /api/update` (used by ESP32 to push data).
 
-Connect your phone/laptop to that Wi-Fi, then open the ESP32 AP gateway IP (typically `192.168.4.1`) in browser.
+### Wi-Fi Configuration
+Update `WIFI_SSID` and `WIFI_PASSWORD` in `water.ino` to match your local network.
 
-### HTTP Endpoints
-
-- `GET /` → dashboard page
-- `GET /data` → JSON telemetry
-- `GET /toggle` → toggle AUTO/MANUAL mode
 
 ## Control Logic Summary
 
