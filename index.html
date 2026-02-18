@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HydroChill Pro | IoT Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBigKzeOslc7leOptmaOQAD-RxY9Bceu8U",
+            authDomain: "smartwatercooler-ed8ae.firebaseapp.com",
+            projectId: "smartwatercooler-ed8ae",
+            databaseURL: "https://smartwatercooler-ed8ae-default-rtdb.firebaseio.com"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const serverUrl = window.location.origin;
+
+        const wTemp = document.getElementById('wTemp');
+        const rTemp = document.getElementById('rTemp');
+        const hum = document.getElementById('hum');
+        const target = document.getElementById('target');
+        const modeLabel = document.getElementById('modeLabel');
+        const statusText = document.getElementById('statusText');
+        const statusCard = document.getElementById('statusCard');
+        const lastSeen = document.getElementById('lastSeen');
+        const fanIcon = document.getElementById('fanIcon');
+        const weatherStatus = document.getElementById('weatherStatus');
+
+        const statusRef = ref(db, 'cooler_status');
+        onValue(statusRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                wTemp.innerText = (data.waterTemp || 0).toFixed(1);
+                rTemp.innerText = (data.roomTemp || 0).toFixed(1);
+                hum.innerText = (data.humidity || 0);
+                target.innerText = (data.target || 20).toFixed(1);
+
+                modeLabel.innerText = data.autoMode ? "ENV-AWARE AUTO" : `MANUAL: ${data.manualSet || 20}°C`;
+                modeLabel.className = data.autoMode
+                    ? "px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-[10px] font-bold tracking-tighter"
+                    : "px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-[10px] font-bold tracking-tighter";
+
+                // Weather state UI
+                if (data.autoMode) {
+                    if (data.target <= 15) weatherStatus.innerText = "Condition: Warm/Rainy (Cold Mode)";
+                    else if (data.target >= 22) weatherStatus.innerText = "Condition: Cold (Room Temp Mode)";
+                    else weatherStatus.innerText = "Condition: Moderate";
+                } else {
+                    weatherStatus.innerText = "System: Manual Override";
+                }
+
+                if (data.relay) {
+                    statusText.innerText = "ACTIVE COOLING";
+                    statusCard.classList.add('border-blue-500/50', 'bg-blue-500/10');
+                    fanIcon.classList.add('animate-spin');
+                } else {
+                    statusText.innerText = "STANDBY";
+                    statusCard.classList.remove('border-blue-500/50', 'bg-blue-500/10');
+                    fanIcon.classList.remove('animate-spin');
+                }
+
+                const now = new Date();
+                lastSeen.innerText = `Sync: ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            }
+        });
+
+        window.sendAction = async (type, value = null) => {
+            await fetch(`${serverUrl}/api/command`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type, value })
+            });
+        };
+
+        window.changeTarget = (step) => {
+            const current = parseFloat(document.getElementById('target').innerText);
+            window.sendAction('SET_TEMP', current + step);
+        };
+
+        setTimeout(() => lucide.createIcons(), 100);
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+        body {
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
+            font-family: 'Inter', sans-serif;
+            color: white;
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+
+<body class="p-4 md:p-12 min-h-screen">
+    <div class="max-w-5xl mx-auto">
+        <header
+            class="flex flex-col md:flex-row justify-between items-center mb-12 gap-6 bg-slate-900/40 p-6 rounded-3xl border border-white/5">
+            <div class="flex items-center gap-4">
+                <div class="p-3 bg-blue-600 rounded-2xl shadow-lg">
+                    <i data-lucide="droplets" class="text-white w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight italic">HYDRO<span
+                            class="text-blue-500">CHILL</span> <span
+                            class="text-xs font-normal not-italic text-slate-500 bg-slate-800 px-2 py-0.5 rounded ml-1">PRO
+                            v3.1</span></h1>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span class="flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                        <p id="lastSeen" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Awaiting
+                            Data...</p>
+                    </div>
+                </div>
+            </div>
+            <button onclick="sendAction('TOGGLE_MODE')"
+                class="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95">
+                <i data-lucide="cpu" class="w-4 h-4 text-blue-400"></i>
+                Toggle Auto/Manual
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="glass p-8 rounded-[2rem]">
+                <div class="flex items-center gap-2 mb-4 text-blue-400">
+                    <i data-lucide="waves" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-black uppercase tracking-[0.2em]">Water Core</span>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-6xl font-black tracking-tighter" id="wTemp">--</span>
+                    <span class="text-xl font-bold text-slate-500">°C</span>
+                </div>
+            </div>
+            <div class="glass p-8 rounded-[2rem]">
+                <div class="flex items-center gap-2 mb-4 text-indigo-400">
+                    <i data-lucide="home" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-black uppercase tracking-[0.2em]">Ambient Temp</span>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-6xl font-black tracking-tighter" id="rTemp">--</span>
+                    <span class="text-xl font-bold text-slate-500">°C</span>
+                </div>
+            </div>
+            <div class="glass p-8 rounded-[2rem]">
+                <div class="flex items-center gap-2 mb-4 text-cyan-400">
+                    <i data-lucide="cloud-rain" class="w-4 h-4"></i>
+                    <span class="text-[10px] font-black uppercase tracking-[0.2em]">Humidity</span>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <span class="text-6xl font-black tracking-tighter" id="hum">--</span>
+                    <span class="text-xl font-bold text-slate-500">%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+            <div class="lg:col-span-3 glass p-10 rounded-[3rem] shadow-2xl relative">
+                <div class="absolute top-8 left-10 flex flex-col gap-2">
+                    <span id="modeLabel">SYNCING...</span>
+                    <span id="weatherStatus"
+                        class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Detecting
+                        conditions...</span>
+                </div>
+                <p class="text-center text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-10">Current
+                    Active Target</p>
+                <div class="flex items-center justify-between max-w-md mx-auto">
+                    <button onclick="changeTarget(-0.5)"
+                        class="w-20 h-20 rounded-3xl bg-slate-800/50 hover:bg-slate-700 border border-white/5 flex items-center justify-center transition-all active:scale-90 shadow-lg">
+                        <i data-lucide="minus" class="w-8 h-8 text-white"></i>
+                    </button>
+                    <div class="text-center">
+                        <div class="text-8xl font-black tracking-tighter mb-2" id="target">--</div>
+                        <div class="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Celsius</div>
+                    </div>
+                    <button onclick="changeTarget(0.5)"
+                        class="w-20 h-20 rounded-3xl bg-blue-600 hover:bg-blue-500 flex items-center justify-center transition-all active:scale-90 shadow-lg">
+                        <i data-lucide="plus" class="w-8 h-8 text-white"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 flex flex-col gap-6">
+                <div id="statusCard"
+                    class="glass p-8 rounded-[2.5rem] flex items-center justify-between border-2 border-transparent transition-all">
+                    <div class="flex items-center gap-5">
+                        <div class="p-4 bg-slate-800 rounded-2xl">
+                            <i id="fanIcon" data-lucide="fan" class="w-6 h-6 text-blue-400"></i>
+                        </div>
+                        <div>
+                            <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">Compressor
+                            </p>
+                            <div class="text-xl font-black tracking-tight" id="statusText">INITIALIZING</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="glass p-8 rounded-[2.5rem] flex items-center gap-5">
+                    <div class="p-4 bg-emerald-500/10 rounded-2xl">
+                        <i data-lucide="shield-check" class="w-6 h-6 text-emerald-500"></i>
+                    </div>
+                    <div>
+                        <p class="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-1">System Health</p>
+                        <div class="text-xl font-black text-emerald-500 tracking-tight">STABLE LINK</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
