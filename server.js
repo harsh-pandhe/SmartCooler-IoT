@@ -9,8 +9,14 @@ app.use(express.json());
 app.use(cors());
 
 // --- 1. INITIALIZE FIREBASE ---
-// Ensure your serviceAccountKey.json is in the same directory!
-const serviceAccount = require("./serviceAccountKey.json");
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+    // Ensure your serviceAccountKey.json is in the same directory for local dev!
+    serviceAccount = require("./serviceAccountKey.json");
+}
+
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
     databaseURL: "https://smartwatercooler-ed8ae-default-rtdb.firebaseio.com"
@@ -66,10 +72,15 @@ app.post('/api/command', (req, res) => {
     }
 });
 
-const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`=========================================`);
-    console.log(`HYDROCHILL GATEWAY ACTIVE ON PORT ${PORT}`);
-    console.log(`URL: http://localhost:${PORT}`);
-    console.log(`=========================================`);
-});
+const PORT = process.env.PORT || 3000;
+// Only start the server if running locally (not on Vercel)
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`=========================================`);
+        console.log(`HYDROCHILL GATEWAY ACTIVE ON PORT ${PORT}`);
+        console.log(`URL: http://localhost:${PORT}`);
+        console.log(`=========================================`);
+    });
+}
+
+module.exports = app;
