@@ -111,8 +111,6 @@ const char index_html[] PROGMEM = R"rawliteral(
 </html>
 )rawliteral";
 
-
-
 // ================= HELPERS =================
 void beep(int ms = 80) {
 	digitalWrite(BUZZER, HIGH);
@@ -120,16 +118,12 @@ void beep(int ms = 80) {
 	digitalWrite(BUZZER, LOW);
 }
 
-
-
 void saveSettings() {
 	preferences.begin("cooler", false);
 	preferences.putFloat("setTemp", setTemp);
 	preferences.putBool("autoMode", autoMode);
 	preferences.end();
 }
-
-
 
 void loadSettings() {
 	preferences.begin("cooler", true);
@@ -139,22 +133,16 @@ void loadSettings() {
 	if (isnan(setTemp) || setTemp < 5 || setTemp > 45) setTemp = 20.0;
 }
 
-
-
 // ================= WEB HANDLERS =================
 void handleRoot() {
 	server.send(200, "text/html", index_html);
 }
-
-
 
 void handleToggle() {
 	autoMode = !autoMode;
 	saveSettings();
 	server.send(200, "text/plain", "OK");
 }
-
-
 
 void handleData() {
 	String json = "{";
@@ -167,8 +155,6 @@ void handleData() {
 	json += "}";
 	server.send(200, "application/json", json);
 }
-
-
 
 // ================= CORE LOGIC =================
 void handleButtons() {
@@ -206,8 +192,6 @@ void handleButtons() {
 	}
 }
 
-
-
 void controlRelay(float target) {
 	unsigned long now = millis();
 	if (waterTemp < -50 || waterTemp > 90) {
@@ -230,8 +214,6 @@ void controlRelay(float target) {
 	relayState = digitalRead(RELAY_PIN);
 	digitalWrite(LED_RELAY, relayState);
 }
-
-
 
 // ================= SETUP =================
 void setup() {
@@ -268,8 +250,6 @@ void setup() {
 
 	beep(200);
 }
-
-
 
 void loop() {
 	server.handleClient(); // Essential for standard WebServer
